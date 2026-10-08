@@ -42,13 +42,15 @@ class RegistrationReceivedNotification extends Notification implements ShouldQue
      */
     public function toMail(object $notifiable): MailMessage
     {
+        $appName = config('app.name', 'GoCoach');
+
         return (new MailMessage)
-            ->subject('Registration Received - NYCSC')
+            ->subject("Registration Received - {$appName}")
             ->greeting("Hello, {$this->member->calling_name}!")
             ->line('Your membership registration has been received successfully.')
             ->line("**Member Number:** {$this->member->member_number}")
             ->line('Your application is currently pending approval. We will notify you once your membership is approved.')
-            ->line('Thank you for your interest in the Naval and Maritime Academy Sports Club!');
+            ->line("Thank you for your interest in the {$appName} Sports Community!");
     }
 
     /**
@@ -64,7 +66,8 @@ class RegistrationReceivedNotification extends Notification implements ShouldQue
                 'member_number' => $this->member->member_number,
             ]);
         } else {
-            $message = 'Welcome to NYCSC! Your membership is pending approval. We will notify you once approved.';
+            $appName = config('app.name', 'GoCoach');
+            $message = "Welcome to {$appName}! Your membership is pending approval. We will notify you once approved.";
         }
 
         return (new TextLKSMSMessage)

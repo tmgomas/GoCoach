@@ -41,8 +41,10 @@ class OverduePaymentNotification extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
+        $appName = config('app.name', 'GoCoach');
+
         return (new MailMessage)
-            ->subject('Overdue Payment Notice - NYCSC')
+            ->subject("Overdue Payment Notice - {$appName}")
             ->level('warning')
             ->greeting('Payment Overdue')
             ->line('This is an urgent notice regarding your overdue payment.')

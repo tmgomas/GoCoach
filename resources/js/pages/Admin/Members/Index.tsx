@@ -31,7 +31,8 @@ import {
     Mail,
     Calendar,
     Hash,
-    Upload
+    Upload,
+    Building2,
 } from 'lucide-react';
 
 interface Member {
@@ -44,6 +45,12 @@ interface Member {
     status: string;
     registration_date: string;
     email?: string;
+    location_id?: string | null;
+    location?: {
+        id: string;
+        name: string;
+        code?: string | null;
+    } | null;
     user?: {
         name: string;
         email: string;
@@ -62,20 +69,41 @@ interface PaginatedMembers {
     total: number;
 }
 
+interface LocationOption {
+    id: string;
+    name: string;
+    code?: string | null;
+}
+
 interface Props {
     members: PaginatedMembers;
+    locations?: LocationOption[];
     filters: {
         status?: string;
         search?: string;
+        location_id?: string;
     };
 }
 
-export default function Index({ members, filters }: Props) {
+export default function Index({ members, locations = [], filters }: Props) {
     const [search, setSearch] = React.useState(filters.search || '');
-    const [status, setStatus] = React.useState(filters.status || '');
+    const [status, setStatus] = React.useState(filters.status || 'all');
+    const [locationId, setLocationId] = React.useState(filters.location_id || 'all');
 
     const handleFilter = () => {
-        router.get('/admin/members', { search, status }, { preserveState: true });
+        const params: any = {};
+        if (search) params.search = search;
+        if (status && status !== 'all') params.status = status;
+        if (locationId && locationId !== 'all') params.location_id = locationId;
+
+        router.get('/admin/members', params, { preserveState: true });
+    };
+
+    const handleReset = () => {
+        setSearch('');
+        setStatus('all');
+        setLocationId('all');
+        router.get('/admin/members', {}, { preserveState: true });
     };
 
     const getStatusBadge = (status: string) => {
@@ -134,7 +162,7 @@ export default function Index({ members, filters }: Props) {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="search">Search</Label>
                                         <div className="relative">
@@ -144,7 +172,7 @@ export default function Index({ members, filters }: Props) {
                                                 type="text"
                                                 value={search}
                                                 onChange={(e) => setSearch(e.target.value)}
-                                                placeholder="Member number, NIC, or name..."
+                                                placeholder="Member #, NIC, or name..."
                                                 className="pl-9"
                                             />
                                         </div>
@@ -164,10 +192,31 @@ export default function Index({ members, filters }: Props) {
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                    <div className="flex items-end sm:col-span-2 lg:col-span-1">
-                                        <Button onClick={handleFilter} className="w-full">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="branch">Branch / Location</Label>
+                                        <Select value={locationId} onValueChange={setLocationId}>
+                                            <SelectTrigger id="branch">
+                                                <SelectValue placeholder="All Branches" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">All Branches</SelectItem>
+                                                {locations.map((loc) => (
+                                                    <SelectItem key={loc.id} value={loc.id}>
+                                                        {loc.name} {loc.code ? `(${loc.code})` : ''}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="flex items-end gap-2">
+                                        <Button onClick={handleFilter} className="flex-1">
                                             Apply Filters
                                         </Button>
+                                        {(search || (status && status !== 'all') || (locationId && locationId !== 'all')) && (
+                                            <Button variant="outline" onClick={handleReset}>
+                                                Reset
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                             </CardContent>
@@ -231,10 +280,18 @@ export default function Index({ members, filters }: Props) {
                                                 </Badge>
                                             ))}
                                         </div>
-                                        <div className="pt-2">
+                                        <div className="flex flex-wrap items-center gap-2 pt-2">
                                             <Badge variant={getStatusBadge(member.status) as any}>
                                                 {member.status.charAt(0).toUpperCase() + member.status.slice(1)}
                                             </Badge>
+                                            {member.location ? (
+                                                <Badge variant="outline" className="gap-1 text-xs">
+                                                    <Building2 className="h-3 w-3" />
+                                                    {member.location.name}
+                                                </Badge>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">General</span>
+                                            )}
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -255,6 +312,9 @@ export default function Index({ members, filters }: Props) {
                                             </th>
                                             <th className="px-6 py-4 text-left text-sm font-medium text-muted-foreground">
                                                 Contact
+                                            </th>
+                                            <th className="px-6 py-4 text-left text-sm font-medium text-muted-foreground">
+                                                Branch
                                             </th>
                                             <th className="px-6 py-4 text-left text-sm font-medium text-muted-foreground">
                                                 Programs
@@ -294,6 +354,19 @@ export default function Index({ members, filters }: Props) {
                                                             {member.email || member.user?.email || 'N/A'}
                                                         </div>
                                                     </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm">
+                                                    {member.location ? (
+                                                        <div className="flex items-center gap-1.5 font-medium text-xs">
+                                                            <Building2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                                                            <span>{member.location.name}</span>
+                                                            {member.location.code && (
+                                                                <span className="text-muted-foreground">({member.location.code})</span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">General</span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex flex-wrap gap-1">

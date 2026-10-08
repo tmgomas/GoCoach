@@ -43,9 +43,10 @@ class PaymentConfirmationNotification extends Notification implements ShouldQueu
     public function toMail(object $notifiable): MailMessage
     {
         $sportName = $this->payment->items->first()?->sport?->name ?? 'Membership';
+        $appName = config('app.name', 'GoCoach');
 
         return (new MailMessage)
-            ->subject('Payment Received - NYCSC')
+            ->subject("Payment Received - {$appName}")
             ->greeting('Payment Confirmed!')
             ->line('We have received your payment. Thank you!')
             ->line('**Amount:** Rs. '.number_format($this->payment->amount, 2))

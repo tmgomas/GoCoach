@@ -57,6 +57,7 @@ interface ScheduleDay {
 interface Program {
     id: string;
     name: string;
+    short_code: string | null;
     description: string | null;
     admission_fee: number;
     monthly_fee: number;
@@ -122,8 +123,11 @@ export default function EditProgram({ program, coaches, locations }: Props) {
         });
     };
 
+    const [isShortCodeManual, setIsShortCodeManual] = useState(!!program.short_code);
+
     const { data, setData, put, processing, errors } = useForm({
         name: program.name || '',
+        short_code: program.short_code || '',
         description: program.description || '',
         admission_fee: program.admission_fee || '',
         monthly_fee: program.monthly_fee || '',
@@ -135,6 +139,15 @@ export default function EditProgram({ program, coaches, locations }: Props) {
         is_active: Boolean(program.is_active),
         update_existing_schedules: false,
     });
+
+    const handleNameChange = (val: string) => {
+        const autoCode = !isShortCodeManual ? val.replace(/[^A-Za-z0-9]/g, '').substring(0, 2).toUpperCase() : data.short_code;
+        setData(prev => ({
+            ...prev,
+            name: val,
+            short_code: autoCode
+        }));
+    };
 
     // Class form state
     const [classForm, setClassForm] = useState({
@@ -455,16 +468,34 @@ export default function EditProgram({ program, coaches, locations }: Props) {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="grid gap-6">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="name">Program Name <span className="text-red-500">*</span></Label>
-                                        <Input
-                                            id="name"
-                                            value={data.name}
-                                            onChange={(e) => setData('name', e.target.value)}
-                                            placeholder="e.g. Swimming"
-                                            className={errors.name ? 'border-red-500' : ''}
-                                        />
-                                        {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="name">Program Name <span className="text-red-500">*</span></Label>
+                                            <Input
+                                                id="name"
+                                                value={data.name}
+                                                onChange={(e) => handleNameChange(e.target.value)}
+                                                placeholder="e.g. Swimming"
+                                                className={errors.name ? 'border-red-500' : ''}
+                                            />
+                                            {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="short_code">Short Code</Label>
+                                            <Input
+                                                id="short_code"
+                                                value={data.short_code}
+                                                onChange={(e) => {
+                                                    setIsShortCodeManual(true);
+                                                    setData('short_code', e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+                                                }}
+                                                maxLength={5}
+                                                placeholder="e.g. SW (Auto-generated)"
+                                                className={errors.short_code ? 'border-red-500' : ''}
+                                            />
+                                            {errors.short_code && <p className="text-sm text-red-500">{errors.short_code}</p>}
+                                        </div>
                                     </div>
 
                                     <div className="space-y-2">

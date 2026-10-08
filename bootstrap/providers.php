@@ -4,5 +4,6 @@ return [
     App\Providers\AppServiceProvider::class,
     App\Providers\EventServiceProvider::class,
     App\Providers\FortifyServiceProvider::class,
+    App\Providers\TenancyServiceProvider::class,
     TextLK\Laravel\TextLKServiceProvider::class,
 ];

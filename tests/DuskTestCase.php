@@ -9,6 +9,12 @@ use Illuminate\Support\Collection;
 use Laravel\Dusk\TestCase as BaseTestCase;
 use PHPUnit\Framework\Attributes\BeforeClass;
 
+if (! class_exists(\Laravel\Dusk\TestCase::class)) {
+    abstract class DuskTestCase extends \PHPUnit\Framework\TestCase {}
+
+    return;
+}
+
 abstract class DuskTestCase extends BaseTestCase
 {
     /**

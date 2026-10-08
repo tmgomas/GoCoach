@@ -17,6 +17,7 @@ import {
     Trophy,
     Printer,
     Download,
+    Building2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -43,6 +44,12 @@ interface Payment {
     payment_method: string;
     month_year: string | null;
     paid_date: string;
+    location_id?: string | null;
+    location?: {
+        id: string;
+        name: string;
+        code?: string | null;
+    } | null;
     reference_number: string | null;
     receipt_url: string | null;
     latest_online_transaction?: OnlineTransaction | null;
@@ -275,6 +282,13 @@ export default function Show({ payment }: Props) {
                                             <div className="font-medium">{payment.month_year}</div>
                                         </div>
                                     )}
+                                    <div>
+                                        <div className="text-sm text-muted-foreground">Credited Branch</div>
+                                        <div className="font-medium flex items-center gap-1.5 mt-0.5">
+                                            <Building2 className="h-4 w-4 text-primary" />
+                                            <span>{payment.location ? `${payment.location.name} ${payment.location.code ? `(${payment.location.code})` : ''}` : 'General / Central Academy'}</span>
+                                        </div>
+                                    </div>
                                     {payment.reference_number && (
                                         <div>
                                             <div className="text-sm text-muted-foreground">Reference Number</div>

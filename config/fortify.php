@@ -144,7 +144,7 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Features::registration(), // Use custom PublicRegistrationController instead
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([

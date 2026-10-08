@@ -28,8 +28,10 @@ class GenerateRegistrationReferenceAction
         // Get sport
         $program = Program::findOrFail($programId);
 
-        if (! $program->short_code) {
-            throw new \Exception("Program '{$program->name}' does not have a short code configured.");
+        $shortCode = $program->short_code;
+        if (! $shortCode) {
+            // Fallback to first two letters of the program name if not configured
+            $shortCode = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $program->name), 0, 2));
         }
 
         // Get settings
@@ -48,7 +50,7 @@ class GenerateRegistrationReferenceAction
             })
             ->where('program_id', $programId)
             ->whereNotNull('program_reference')
-            ->where('program_reference', 'like', "{$year}-{$program->short_code}-%")
+            ->where('program_reference', 'like', "{$year}-{$shortCode}-%")
             ->latest('enrolled_at')
             ->first();
 
@@ -64,6 +66,6 @@ class GenerateRegistrationReferenceAction
         // Generate reference number
         $number = str_pad($nextNumber, $digits, '0', STR_PAD_LEFT);
 
-        return "{$year}-{$program->short_code}-{$number}";
+        return "{$year}-{$shortCode}-{$number}";
     }
 }

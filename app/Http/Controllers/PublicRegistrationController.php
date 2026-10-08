@@ -25,13 +25,16 @@ class PublicRegistrationController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nic_passport' => 'required|unique:members',
+            'full_name' => 'required|string|max:255',
+            'calling_name' => 'nullable|string|max:50',
+            'email' => 'required|email|unique:members,email|max:255',
+            'nic_passport' => 'required|unique:members,nic_passport|max:20',
             'date_of_birth' => 'required|date|before:today',
             'gender' => 'required|in:male,female,other',
-            'contact_number' => 'required|string',
+            'contact_number' => 'required|string|max:20',
             'address' => 'required|string',
-            'emergency_contact' => 'required|string',
-            'emergency_number' => 'required|string',
+            'emergency_contact' => 'required|string|max:100',
+            'emergency_number' => 'required|string|max:20',
             'program_ids' => 'required|array|min:1',
             'program_ids.*' => 'exists:programs,id',
         ]);

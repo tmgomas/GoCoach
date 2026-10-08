@@ -17,10 +17,12 @@ class AttendanceController extends Controller
     public function index(Request $request)
     {
         $programs = Program::select('id', 'name')->orderBy('name')->get();
+        $locations = \App\Models\Location::where('is_active', true)->select('id', 'name', 'code')->orderBy('name')->get();
 
-        $filters = $request->only(['date', 'program_id']);
+        $filters = $request->only(['date', 'program_id', 'location_id']);
         $date = $request->input('date', today()->format('Y-m-d'));
         $programId = $request->input('program_id');
+        $locationId = $request->input('location_id');
 
         $members = [];
 
@@ -28,8 +30,9 @@ class AttendanceController extends Controller
             $members = Member::whereHas('programs', function ($query) use ($programId) {
                 $query->where('programs.id', $programId);
             })
+                ->when($locationId, fn ($q, $loc) => $q->where('location_id', $loc))
                 ->whereIn('status', ['active', 'pending'])
-                ->with(['attendances' => function ($query) use ($date, $programId) {
+                ->with(['location:id,name,code', 'attendances' => function ($query) use ($date, $programId) {
                     $query->whereDate('check_in_time', $date)
                         ->where('program_id', $programId);
                 }])
@@ -40,6 +43,10 @@ class AttendanceController extends Controller
                         'id' => $member->id,
                         'member_number' => $member->member_number,
                         'full_name' => $member->full_name,
+                        'location' => $member->location ? [
+                            'name' => $member->location->name,
+                            'code' => $member->location->code,
+                        ] : null,
                         'attendance' => $member->attendances->first() ? [
                             'id' => $member->attendances->first()->id,
                             'check_in_time' => $member->attendances->first()->check_in_time->format('H:i'),
@@ -51,6 +58,7 @@ class AttendanceController extends Controller
 
         return Inertia::render('Admin/Attendance/Index', [
             'programs' => $programs,
+            'locations' => $locations,
             'filters' => $filters,
             'members' => $members,
             'currentDate' => $date,
@@ -178,6 +186,40 @@ class AttendanceController extends Controller
 
         $attendance = $attendanceQuery->first();
 
+        // Fetch Pending Payments and Schedules for Quick Payment UI
+        $pendingInvoices = [];
+
+        $payments = \App\Models\Payment::where('member_id', $member->id)
+            ->whereIn('status', ['pending', 'overdue'])
+            ->whereDate('due_date', '<=', \Carbon\Carbon::now()->endOfMonth())
+            ->orderBy('due_date', 'asc')
+            ->get();
+
+        foreach($payments as $p) {
+            $typeStr = $p->type instanceof \UnitEnum ? $p->type->value : $p->type;
+            $pendingInvoices[] = [
+                'id' => $p->id,
+                'type' => 'payment',
+                'month_year' => strtoupper($typeStr) . ($p->month_year ? " ({$p->month_year})" : ''),
+                'amount' => $p->amount,
+            ];
+        }
+
+        $schedules = \App\Models\MemberPaymentSchedule::where('member_id', $member->id)
+            ->whereIn('status', ['pending', 'overdue'])
+            ->whereDate('due_date', '<=', \Carbon\Carbon::now()->endOfMonth())
+            ->orderBy('due_date', 'asc')
+            ->get();
+
+        foreach($schedules as $s) {
+            $pendingInvoices[] = [
+                'id' => $s->id,
+                'type' => 'schedule',
+                'month_year' => "Monthly - " . $s->month_year,
+                'amount' => $s->amount,
+            ];
+        }
+
         if ($attendance) {
             // Already checked in. Check if checked out?
             if ($attendance->check_out_time) {
@@ -187,23 +229,25 @@ class AttendanceController extends Controller
                     'member' => $member->load(['programs']),
                     'attendance' => $attendance,
                     'status' => 'checked_out',
+                    'pending_payments' => $pendingInvoices,
                 ]);
             } else {
                 // Prevent double-punch (checking out immediately after checking in)
                 // If check-in was less than 2 minutes ago, ignore this scan
-                if ($attendance->check_in_time->diffInMinutes(Carbon::now()) < 5) { // 5 Minute cooldown
+                if ($attendance->check_in_time->diffInMinutes(\Carbon\Carbon::now()) < 5) { // 5 Minute cooldown
                     return response()->json([
                         'success' => true,
                         'message' => 'Already Checked In (Duplicate scan ignored) - Wait 5m to checkout',
                         'member' => $member->load(['programs']),
                         'attendance' => $attendance,
                         'status' => 'checked_in',
+                        'pending_payments' => $pendingInvoices,
                     ]);
                 }
 
                 // Perform Check-out
                 $attendance->update([
-                    'check_out_time' => Carbon::now(),
+                    'check_out_time' => \Carbon\Carbon::now(),
                 ]);
 
                 return response()->json([
@@ -212,16 +256,17 @@ class AttendanceController extends Controller
                     'member' => $member->load(['programs']),
                     'attendance' => $attendance->fresh(),
                     'status' => 'checked_out',
+                    'pending_payments' => $pendingInvoices,
                 ]);
             }
         }
 
         // Check In
-        $attendance = Attendance::create([
+        $attendance = \App\Models\Attendance::create([
             'member_id' => $member->id,
             'program_id' => $programId,
-            'check_in_time' => Carbon::now()->setDateFrom($date),
-            'marked_by' => Auth::id(),
+            'check_in_time' => \Carbon\Carbon::now()->setDateFrom($date),
+            'marked_by' => \Illuminate\Support\Facades\Auth::id(),
             'method' => $method,
         ]);
 
@@ -231,6 +276,7 @@ class AttendanceController extends Controller
             'member' => $member->load(['programs']),
             'attendance' => $attendance,
             'status' => 'checked_in',
+            'pending_payments' => $pendingInvoices,
         ]);
     }
 
@@ -299,4 +345,37 @@ class AttendanceController extends Controller
 
         return back()->with('success', 'Attendance records updated.');
     }
+
+    public function quickPay(Request $request, \App\Services\PaymentService $paymentService)
+    {
+        $validated = $request->validate([
+            'schedule_id' => 'required|exists:member_payment_schedules,id',
+            'payment_method' => 'required|in:cash,bank_transfer',
+        ]);
+
+        $schedule = \App\Models\MemberPaymentSchedule::findOrFail($validated['schedule_id']);
+        $member = \App\Models\Member::findOrFail($schedule->member_id);
+
+        try {
+            $paymentService->processMonthlyPayment(
+                $member,
+                $schedule->month_year,
+                $validated['payment_method'],
+                null, // receipt_url
+                null, // reference_number
+                $schedule->program_id
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => "Payment marked as paid.",
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
 }
+

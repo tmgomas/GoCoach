@@ -34,7 +34,7 @@ export default function ReportsIndex({ kpis, attendanceTrend, recentPayments }: 
                     </div>
                     <div className="mt-4 md:mt-0">
                         <a 
-                            href={route('reports.export', { type: 'payments' })}
+                            href={route('admin.reports.export', { type: 'payments' })}
                             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-xl shadow-md transition-all font-semibold"
                         >
                             <Download className="w-5 h-5" />
@@ -129,7 +129,7 @@ export default function ReportsIndex({ kpis, attendanceTrend, recentPayments }: 
                     <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Recent Payments</h2>
-                            <Link href={route('reports.payments')} className="text-sm text-indigo-500 hover:text-indigo-600 font-medium">
+                            <Link href={route('admin.reports.payments')} className="text-sm text-indigo-500 hover:text-indigo-600 font-medium">
                                 View All
                             </Link>
                         </div>

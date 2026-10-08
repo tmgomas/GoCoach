@@ -23,6 +23,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        $middleware->prepend(\App\Http\Middleware\InitializeTenancyIfTenantDomain::class);
+
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,

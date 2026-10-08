@@ -27,4 +27,26 @@ class SecureStorageService {
   Future<void> clearAll() async {
     await _storage.deleteAll();
   }
+
+  // Club / Multi-Tenancy Data
+  Future<void> saveClubBaseUrl(String baseUrl) async {
+    await _storage.write(key: 'club_base_url', value: baseUrl);
+  }
+
+  Future<String?> getClubBaseUrl() async {
+    return await _storage.read(key: 'club_base_url');
+  }
+
+  Future<void> saveClubName(String name) async {
+    await _storage.write(key: 'club_name', value: name);
+  }
+
+  Future<String?> getClubName() async {
+    return await _storage.read(key: 'club_name');
+  }
+
+  Future<void> clearClubData() async {
+    await _storage.delete(key: 'club_base_url');
+    await _storage.delete(key: 'club_name');
+  }
 }

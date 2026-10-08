@@ -43,8 +43,10 @@ class PaymentReminderNotification extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
+        $appName = config('app.name', 'GoCoach');
+
         return (new MailMessage)
-            ->subject('Payment Reminder - NYCSC')
+            ->subject("Payment Reminder - {$appName}")
             ->greeting('Hello!')
             ->line('This is a friendly reminder that you have a payment due.')
             ->line('**Amount:** Rs. '.number_format($this->amount, 2))

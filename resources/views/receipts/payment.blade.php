@@ -99,7 +99,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">{{ config('app.name', 'NYCSC') }}</div>
+            <div class="logo">{{ config('app.name', 'GoCoach') }}</div>
             <div class="sub-header">Official Payment Receipt</div>
         </div>
 
@@ -162,7 +162,7 @@
 
         <div class="footer">
             <p>This is a computer-generated document. No signature is required.</p>
-            <p>&copy; {{ date('Y') }} {{ config('app.name', 'NYCSC') }}. All rights reserved.</p>
+            <p>&copy; {{ date('Y') }} {{ config('app.name', 'GoCoach') }}. All rights reserved.</p>
         </div>
     </div>
 </body>

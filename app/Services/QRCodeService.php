@@ -165,12 +165,12 @@ class QRCodeService
         $fileName = "qrcodes/member_{$member->id}_{$member->member_number}.svg";
 
         if (Storage::disk('public')->exists($fileName)) {
-            return Storage::url($fileName);
+            return tenant_asset($fileName);
         }
 
         // Generate if doesn't exist
         $this->generateMemberQRCode($member);
 
-        return Storage::url($fileName);
+        return tenant_asset($fileName);
     }
 }

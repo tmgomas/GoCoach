@@ -62,17 +62,17 @@ class _SplashPageState extends State<SplashPage> {
               ),
               const SizedBox(height: 24),
               Text(
-                'NYCSC',
+                'GoCoach',
                 style: GoogleFonts.poppins(
                   fontSize: 36,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
-                  letterSpacing: 4,
+                  letterSpacing: 2,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Sports Club',
+                'Athlete Portal',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   color: Colors.white.withValues(alpha: 0.8),

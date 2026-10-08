@@ -116,11 +116,19 @@ export interface Payment {
     receipt_number?: string;
     reference_number?: string;
     payment_method?: 'cash' | 'online' | 'bank_transfer' | null;
+    location_id?: string | null;
+    location?: BranchLocation | null;
     program?: {
         name: string;
     };
     items?: PaymentItem[];
     schedules?: PaymentSchedule[];
+}
+
+export interface BranchLocation {
+    id: string;
+    name: string;
+    code?: string | null;
 }
 
 export interface PaymentSchedule {
@@ -146,6 +154,8 @@ export interface Member {
     contact_number: string;
     address: string;
     email?: string;
+    location_id?: string | null;
+    location?: BranchLocation | null;
 
     // Medical
     blood_group?: string;

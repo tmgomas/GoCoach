@@ -16,8 +16,9 @@ class MemberController extends Controller
 
     public function index(Request $request)
     {
-        $members = Member::with(['user', 'programs'])
+        $members = Member::with(['user', 'programs', 'location'])
             ->when($request->status, fn ($q, $status) => $q->where('status', $status))
+            ->when($request->location_id, fn ($q, $locId) => $q->where('location_id', $locId))
             ->when($request->search, fn ($q, $search) => $q->where('member_number', 'like', "%{$search}%")
                 ->orWhere('nic_passport', 'like', "%{$search}%")
                 ->orWhere('full_name', 'like', "%{$search}%")
@@ -27,9 +28,15 @@ class MemberController extends Controller
             ->latest()
             ->paginate(15);
 
+        $locations = \App\Models\Location::where('is_active', true)
+            ->select('id', 'name', 'code')
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('Admin/Members/Index', [
             'members' => $members,
-            'filters' => $request->only(['status', 'search']),
+            'locations' => $locations,
+            'filters' => $request->only(['status', 'search', 'location_id']),
         ]);
     }
 
@@ -39,14 +46,23 @@ class MemberController extends Controller
             ->select('id', 'name', 'admission_fee', 'monthly_fee')
             ->get();
 
+        $locations = \App\Models\Location::where('is_active', true)
+            ->select('id', 'name', 'code')
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('Admin/Members/Create', [
             'programs' => $programs,
+            'locations' => $locations,
         ]);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
+            // Branch / Location
+            'location_id' => 'nullable|exists:locations,id',
+
             // Personal
             'full_name' => 'required|string|max:255',
             'calling_name' => 'required|string|max:255',
@@ -103,10 +119,12 @@ class MemberController extends Controller
     {
         $member->load([
             'user',
+            'location',
             'programs.location',
             'payments.program',
+            'payments.location',
             'payments.items.program',
-            'attendances',
+            'attendances.location',
             'paymentSchedules.program',
             'programClasses.programClass.program',
             'programClasses.programClass.coach',
@@ -142,13 +160,33 @@ class MemberController extends Controller
             ->flatten(1)
             ->take(5);
 
+        $availableLocations = \App\Models\Location::where('is_active', true)
+            ->select('id', 'name', 'code')
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('Admin/Members/Show', [
             'member' => $member,
             'stats' => $stats,
             'availablePrograms' => \App\Models\Program::where('is_active', true)->select('id', 'name', 'monthly_fee')->get(),
             'availableClasses' => $availableClasses,
+            'availableLocations' => $availableLocations,
             'upcomingClasses' => $upcomingClasses,
         ]);
+    }
+
+    public function transferLocation(Request $request, Member $member)
+    {
+        $validated = $request->validate([
+            'location_id' => 'required|exists:locations,id',
+        ]);
+
+        $oldLocation = $member->location?->name ?? 'Unassigned';
+        $member->update(['location_id' => $validated['location_id']]);
+        $newLocation = $member->fresh('location')->location?->name;
+
+        return redirect()->back()
+            ->with('success', "Member successfully transferred from {$oldLocation} to {$newLocation}. Past records remain securely with {$oldLocation}.");
     }
 
     public function approve(Member $member)

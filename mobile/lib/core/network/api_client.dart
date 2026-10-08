@@ -14,7 +14,7 @@ class ApiClient {
   ApiClient(this._storage) {
     _dio = Dio(
       BaseOptions(
-        baseUrl: ApiConstants.baseUrl,
+        baseUrl: ApiConstants.centralBaseUrl, // Fallback, will be overridden by interceptor
         connectTimeout: Duration(seconds: AppConstants.connectTimeout),
         receiveTimeout: Duration(seconds: AppConstants.receiveTimeout),
         headers: {
@@ -25,6 +25,7 @@ class ApiClient {
     );
 
     _dio.interceptors.addAll([
+      _BaseUrlInterceptor(_storage),
       _AuthInterceptor(_storage),
       _ErrorInterceptor(),
       _LoggingInterceptor(_logger),
@@ -136,5 +137,27 @@ class _LoggingInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) {
     _logger.e('ERROR[${err.response?.statusCode}] => PATH: ${err.requestOptions.path}');
     super.onError(err, handler);
+  }
+}
+
+/// Automatically sets the Base URL per-tenant.
+class _BaseUrlInterceptor extends Interceptor {
+  final SecureStorageService _storage;
+
+  _BaseUrlInterceptor(this._storage);
+
+  @override
+  void onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
+    // If the request isn't an absolute URL, prefix the dynamically selected club's base URL
+    if (!options.path.startsWith('http')) {
+      final baseUrl = await _storage.getClubBaseUrl();
+      if (baseUrl != null && baseUrl.isNotEmpty) {
+        options.baseUrl = baseUrl;
+      }
+    }
+    super.onRequest(options, handler);
   }
 }

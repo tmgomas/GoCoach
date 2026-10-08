@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/clubs', [\App\Http\Controllers\Api\Central\ClubController::class, 'index']);
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {

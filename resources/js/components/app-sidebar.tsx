@@ -28,17 +28,36 @@ import {
     CalendarX,
     MapPin,
     Settings,
-    MessageSquare
+    MessageSquare,
+    Building2,
+    PlusCircle,
+    Server,
+    ShieldCheck,
+    Globe,
 } from 'lucide-react';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-    const { auth } = usePage<SharedData>().props;
+    const { auth, isCentral, tenant, name } = usePage<SharedData>().props;
     const userRoles = auth?.roles || [];
 
     // Helper function to check if user has any of the specified roles
     const hasRole = (roles: string[]) => {
         return roles.some(role => userRoles.includes(role));
     };
+
+    // Central SaaS Super Admin Navigation
+    const saasAdminNavigation: NavItem[] = [
+        {
+            title: 'Clubs & Tenants',
+            href: '/saas-admin/tenants',
+            icon: Building2,
+        },
+        {
+            title: 'Register New Club',
+            href: '/saas-admin/tenants/create',
+            icon: PlusCircle,
+        },
+    ];
 
     // Admin Navigation
     const adminNavigation: NavItem[] = [
@@ -143,10 +162,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         },
     ];
 
-    // Determine which navigation to show based on user role
+    // Determine which navigation to show based on context and user role
     let navigationItems: NavItem[] = [];
 
-    if (hasRole(['super_admin', 'admin'])) {
+    if (isCentral) {
+        navigationItems = saasAdminNavigation;
+    } else if (hasRole(['super_admin', 'admin'])) {
         navigationItems = adminNavigation;
     } else if (hasRole(['member'])) {
         navigationItems = memberNavigation;
@@ -160,16 +181,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href="/">
+                            <Link href={isCentral ? '/saas-admin/tenants' : '/'}>
                                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                                    <GalleryVerticalEnd className="size-4" />
+                                    {isCentral ? (
+                                        <ShieldCheck className="size-4" />
+                                    ) : (
+                                        <Trophy className="size-4" />
+                                    )}
                                 </div>
                                 <div className="grid flex-1 text-left text-sm leading-tight">
                                     <span className="truncate font-semibold">
-                                        NYCSC
+                                        {isCentral ? 'GoCoach Central' : (tenant?.name || name || 'GoCoach')}
                                     </span>
-                                    <span className="truncate text-xs">
-                                        Programs Club
+                                    <span className="truncate text-xs text-muted-foreground">
+                                        {isCentral ? 'SaaS Super Admin' : 'Sports & Academy OS'}
                                     </span>
                                 </div>
                             </Link>

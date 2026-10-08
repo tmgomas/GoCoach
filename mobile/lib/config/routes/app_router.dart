@@ -4,6 +4,7 @@ import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/club_selection_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/coach/presentation/pages/coach_home_page.dart';
 
@@ -21,15 +22,17 @@ class AppRouter {
       final location = state.matchedLocation;
       final isOnSplash = location == '/splash';
       final isOnLogin = location == '/login';
-      final isAuthPage = isOnSplash || isOnLogin;
+      final isOnClubSelection = location == '/club_selection';
+      final isAuthPage = isOnSplash || isOnLogin || isOnClubSelection;
 
       // Still loading auth — stay on splash
       if (authState is AuthInitial || authState is AuthLoading) {
         return isOnSplash ? null : '/splash';
       }
 
-      // Not authenticated — go to login
+      // Not authenticated — go to login (unless on club selection)
       if (authState is AuthUnauthenticated || authState is AuthFailure) {
+        if (isOnClubSelection) return null;
         return isOnLogin ? null : '/login';
       }
 
@@ -42,6 +45,10 @@ class AppRouter {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/club_selection',
+        builder: (context, state) => const ClubSelectionPage(),
+      ),
       GoRoute(
         path: '/splash',
         builder: (context, state) => const SplashPage(),

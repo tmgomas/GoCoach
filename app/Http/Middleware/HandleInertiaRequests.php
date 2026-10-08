@@ -38,6 +38,11 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            'isCentral' => in_array($request->getHost(), config('tenancy.central_domains', [])),
+            'tenant' => function_exists('tenant') && tenant() ? [
+                'id' => tenant('id'),
+                'name' => tenant('name'),
+            ] : null,
             'auth' => [
                 'user' => $request->user(),
                 'roles' => $request->user() ? $request->user()->getRoleNames() : [],

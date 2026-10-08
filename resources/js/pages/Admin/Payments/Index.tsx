@@ -35,9 +35,16 @@ import {
     Printer,
     Download,
     FileText,
+    Building2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+
+interface LocationOption {
+    id: string;
+    name: string;
+    code?: string | null;
+}
 
 interface Payment {
     id: string;
@@ -47,6 +54,8 @@ interface Payment {
     payment_method: string;
     month_year: string | null;
     paid_date: string;
+    location_id?: string | null;
+    location?: LocationOption | null;
     latest_online_transaction?: {
         order_id: string;
         gateway_transaction_id: string | null;
@@ -76,10 +85,12 @@ interface PaginatedPayments {
 
 interface Props {
     payments: PaginatedPayments;
+    locations?: LocationOption[];
     filters: {
         status?: string;
         type?: string;
         search?: string;
+        location_id?: string;
     };
     stats?: {
         total_amount: number;
@@ -89,10 +100,11 @@ interface Props {
     };
 }
 
-export default function Index({ payments, filters, stats }: Props) {
+export default function Index({ payments, locations = [], filters, stats }: Props) {
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || 'all');
     const [type, setType] = useState(filters.type || 'all');
+    const [locationId, setLocationId] = useState(filters.location_id || 'all');
     const { confirm, ConfirmDialog } = useConfirm();
 
     const handleFilter = () => {
@@ -100,14 +112,23 @@ export default function Index({ payments, filters, stats }: Props) {
         if (search) params.search = search;
         if (status && status !== 'all') params.status = status;
         if (type && type !== 'all') params.type = type;
+        if (locationId && locationId !== 'all') params.location_id = locationId;
 
         router.get('/admin/payments', params, { preserveState: true });
+    };
+
+    const handleReset = () => {
+        setSearch('');
+        setStatus('all');
+        setType('all');
+        setLocationId('all');
+        router.get('/admin/payments', {}, { preserveState: true });
     };
 
     const handleVerify = async (payment: Payment) => {
         const confirmed = await confirm({
             title: 'Verify Payment',
-            description: `Verify payment of Rs. ${Number(payment.amount).toLocaleString()} from ${payment.member.user?.name || payment.member.member_number}?`,
+            description: `Verify payment of Rs. ${Number(payment.amount).toLocaleString()} from ${payment.member?.full_name || payment.member?.user?.name || payment.member?.member_number}?`,
             confirmText: 'Verify',
             cancelText: 'Cancel',
         });
@@ -116,7 +137,7 @@ export default function Index({ payments, filters, stats }: Props) {
             toast.promise(
                 new Promise((resolve, reject) => {
                     router.post(`/admin/payments/${payment.id}/verify`, {}, {
-                        onSuccess: () => resolve(payment.member.user?.name || payment.member.member_number),
+                        onSuccess: () => resolve(payment.member?.full_name || payment.member?.user?.name || payment.member?.member_number),
                         onError: () => reject()
                     });
                 }),
@@ -273,7 +294,7 @@ export default function Index({ payments, filters, stats }: Props) {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Search</label>
                                         <div className="relative">
@@ -318,11 +339,33 @@ export default function Index({ payments, filters, stats }: Props) {
                                         </Select>
                                     </div>
 
-                                    <div className="flex items-end">
-                                        <Button onClick={handleFilter} className="w-full">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Branch / Location</label>
+                                        <Select value={locationId} onValueChange={setLocationId}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="All Branches" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">All Branches</SelectItem>
+                                                {locations.map((loc) => (
+                                                    <SelectItem key={loc.id} value={loc.id}>
+                                                        {loc.name} {loc.code ? `(${loc.code})` : ''}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="flex items-end gap-2">
+                                        <Button onClick={handleFilter} className="flex-1">
                                             <Filter className="mr-2 h-4 w-4" />
-                                            Apply Filters
+                                            Apply
                                         </Button>
+                                        {(search || (status && status !== 'all') || (type && type !== 'all') || (locationId && locationId !== 'all')) && (
+                                            <Button variant="outline" onClick={handleReset}>
+                                                Reset
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                             </CardContent>
@@ -336,11 +379,11 @@ export default function Index({ payments, filters, stats }: Props) {
                                         <div className="flex items-start justify-between">
                                             <div className="space-y-1">
                                                 <CardTitle className="text-lg">
-                                                    {payment.member.user?.name || payment.member.member_number}
+                                                    {payment.member?.full_name || payment.member?.user?.name || payment.member?.member_number}
                                                 </CardTitle>
                                                 <CardDescription className="flex items-center gap-1">
                                                     <Hash className="h-3 w-3" />
-                                                    {payment.member.member_number}
+                                                    {payment.member?.member_number}
                                                 </CardDescription>
                                             </div>
                                             <DropdownMenu>
@@ -405,13 +448,19 @@ export default function Index({ payments, filters, stats }: Props) {
                                             <Calendar className="h-4 w-4" />
                                             {new Date(payment.paid_date).toLocaleDateString()}
                                         </div>
-                                        <div className="flex flex-wrap gap-2 pt-2">
+                                        <div className="flex flex-wrap items-center gap-2 pt-2">
                                             <Badge variant={getTypeBadge(payment.type) as any}>
                                                 {payment.type}
                                             </Badge>
                                             <Badge variant={getStatusBadge(payment.status) as any}>
                                                 {payment.status}
                                             </Badge>
+                                            {payment.location && (
+                                                <Badge variant="outline" className="gap-1 text-xs">
+                                                    <Building2 className="h-3 w-3 text-primary" />
+                                                    {payment.location.name}
+                                                </Badge>
+                                            )}
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -426,6 +475,9 @@ export default function Index({ payments, filters, stats }: Props) {
                                         <tr className="border-b">
                                             <th className="px-6 py-4 text-left text-sm font-medium text-muted-foreground">
                                                 Member
+                                            </th>
+                                            <th className="px-6 py-4 text-left text-sm font-medium text-muted-foreground">
+                                                Branch
                                             </th>
                                             <th className="px-6 py-4 text-left text-sm font-medium text-muted-foreground">
                                                 Amount
@@ -453,15 +505,28 @@ export default function Index({ payments, filters, stats }: Props) {
                                                 <td className="px-6 py-4">
                                                     <div className="space-y-1">
                                                         <Link
-                                                            href={`/admin/members/${payment.member.id}`}
+                                                            href={`/admin/members/${payment.member?.id || ''}`}
                                                             className="text-sm font-medium hover:underline"
                                                         >
-                                                            {payment.member.user?.name || 'N/A'}
+                                                            {payment.member?.full_name || payment.member?.user?.name || 'Unknown Member'}
                                                         </Link>
                                                         <div className="text-sm text-muted-foreground">
-                                                            {payment.member.member_number}
+                                                            {payment.member?.member_number || 'N/A'}
                                                         </div>
                                                     </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm">
+                                                    {payment.location ? (
+                                                        <div className="flex items-center gap-1.5 font-medium text-xs">
+                                                            <Building2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                                                            <span>{payment.location.name}</span>
+                                                            {payment.location.code && (
+                                                                <span className="text-muted-foreground">({payment.location.code})</span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">General</span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 text-sm font-semibold">
                                                     Rs. {Number(payment.amount).toLocaleString()}

@@ -14,7 +14,7 @@ class PayHereService
      */
     public function generateOrderId(Payment $payment): string
     {
-        return 'NYCSC-'.strtoupper(Str::random(8)).'-'.substr($payment->id, 0, 8);
+        return 'GOCOACH-'.strtoupper(Str::random(8)).'-'.substr($payment->id, 0, 8);
     }
 
     /**
@@ -99,7 +99,7 @@ class PayHereService
             'amount' => $amount,
             'first_name' => $firstName,
             'last_name' => $lastName,
-            'email' => $member->email ?: ($member->user?->email ?: 'noemail@nycsc.lk'),
+            'email' => $member->email ?: ($member->user?->email ?: 'noemail@gocoach.lk'),
             'phone' => $member->contact_number ?: '0000000000',
             'address' => $member->address ?: 'N/A',
             'city' => 'Colombo',

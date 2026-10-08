@@ -42,15 +42,17 @@ class ApprovalNotification extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
+        $appName = config('app.name', 'GoCoach');
+
         return (new MailMessage)
-            ->subject('Membership Approved - NYCSC')
+            ->subject("Membership Approved - {$appName}")
             ->greeting("Congratulations, {$this->member->calling_name}!")
-            ->line('Your NYCSC membership application has been approved.')
+            ->line("Your {$appName} membership application has been approved.")
             ->line("**Member ID:** {$this->member->member_number}")
             ->line("**Approved on:** {$this->member->approved_at->format('Y-m-d')}")
             ->line('You now have full access to all club facilities and programs.')
             ->action('View Dashboard', url('/dashboard'))
-            ->line('Welcome to the Naval and Maritime Academy Sports Club!');
+            ->line("Welcome to the {$appName} Sports Community!");
     }
 
     /**
@@ -66,7 +68,8 @@ class ApprovalNotification extends Notification implements ShouldQueue
                 'member_number' => $this->member->member_number,
             ]);
         } else {
-            $message = "Congratulations! Your NYCSC membership is approved. Member ID: {$this->member->member_number}. Welcome to the club!";
+            $appName = config('app.name', 'GoCoach');
+            $message = "Congratulations! Your {$appName} membership is approved. Member ID: {$this->member->member_number}. Welcome to the club!";
         }
 
         return (new TextLKSMSMessage)

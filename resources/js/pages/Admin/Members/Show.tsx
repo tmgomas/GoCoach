@@ -4,6 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -23,8 +24,26 @@ import {
     DollarSign,
     Heart,
     Bookmark,
-    QrCode
+    QrCode,
+    Building2,
+    ArrowRightLeft,
+    ShieldCheck,
 } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useInput } from '@/components/ui/input-dialog';
@@ -55,13 +74,24 @@ interface Props {
     availablePrograms: AvailableProgram[];
     availableClasses?: ProgramClass[];
     upcomingClasses?: UpcomingClass[];
+    availableLocations?: Array<{ id: string; name: string; code?: string | null }>;
 }
 
-export default function Show({ member, stats, availablePrograms, availableClasses = [], upcomingClasses = [] }: Props) {
+export default function Show({
+    member,
+    stats,
+    availablePrograms,
+    availableClasses = [],
+    upcomingClasses = [],
+    availableLocations = [],
+}: Props) {
     // Dialog states
     const [isApproveOpen, setIsApproveOpen] = useState(false);
     const [isEditProgramsOpen, setIsEditProgramsOpen] = useState(false);
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+    const [isTransferOpen, setIsTransferOpen] = useState(false);
+    const [targetLocationId, setTargetLocationId] = useState(member.location_id || '');
+    const [isTransferring, setIsTransferring] = useState(false);
 
     // Form states
     const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
@@ -208,6 +238,31 @@ export default function Show({ member, stats, availablePrograms, availableClasse
         } else {
             setIsEditProgramsOpen(true);
         }
+    };
+
+    const handleTransferLocation = () => {
+        if (!targetLocationId) {
+            toast.error('Please select a branch to transfer to');
+            return;
+        }
+
+        setIsTransferring(true);
+        router.post(
+            route('admin.members.transfer-location', member.id),
+            { location_id: targetLocationId },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setIsTransferOpen(false);
+                    setIsTransferring(false);
+                    toast.success('Member branch transferred successfully!');
+                },
+                onError: (errs) => {
+                    setIsTransferring(false);
+                    toast.error((Object.values(errs)[0] as string) || 'Failed to transfer branch');
+                },
+            }
+        );
     };
 
     const handlePayment = async () => {
@@ -380,12 +435,16 @@ export default function Show({ member, stats, availablePrograms, availableClasse
                                             <p className="text-muted-foreground mt-1">
                                                 {member.membership_type.charAt(0).toUpperCase() + member.membership_type.slice(1)} Member
                                             </p>
-                                            <div className="flex items-center gap-2 mt-3">
+                                            <div className="flex flex-wrap items-center gap-2 mt-3">
                                                 <Badge variant="outline" className="font-mono">
                                                     #{member.member_number}
                                                 </Badge>
                                                 <Badge variant={getStatusBadge(member.status) as any}>
                                                     {member.status.toUpperCase()}
+                                                </Badge>
+                                                <Badge variant="outline" className="gap-1.5 border-primary/30 bg-primary/5 text-primary text-xs py-0.5 px-2">
+                                                    <Building2 className="h-3.5 w-3.5" />
+                                                    <span>Branch: {member.location ? `${member.location.name}${member.location.code ? ` (${member.location.code})` : ''}` : 'General / Unassigned'}</span>
                                                 </Badge>
                                                 <div className="flex items-center gap-1 text-amber-500">
                                                     <Star className="h-4 w-4 fill-current" />
@@ -397,7 +456,16 @@ export default function Show({ member, stats, availablePrograms, availableClasse
                                         </div>
 
                                         {/* Action Buttons */}
-                                        <div className="flex gap-2">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setIsTransferOpen(true)}
+                                                className="gap-1.5"
+                                            >
+                                                <ArrowRightLeft className="h-4 w-4" />
+                                                Transfer Branch
+                                            </Button>
                                             <Button variant="outline" size="sm">
                                                 <Bookmark className="h-4 w-4 mr-2" />
                                                 Bookmark
@@ -826,6 +894,68 @@ export default function Show({ member, stats, availablePrograms, availableClasse
                         selectedAmount={selectedAmount}
                         onSubmit={handlePayment}
                     />
+
+                    {/* Transfer Branch Dialog */}
+                    <Dialog open={isTransferOpen} onOpenChange={setIsTransferOpen}>
+                        <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                                <div className="flex items-center gap-2">
+                                    <Building2 className="h-5 w-5 text-primary" />
+                                    <DialogTitle>Transfer Student Branch</DialogTitle>
+                                </div>
+                                <DialogDescription>
+                                    Change this member's primary branch affiliation across the academy.
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <div className="space-y-4 py-2">
+                                <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                                    <p className="text-xs text-muted-foreground font-medium">CURRENT HOME BRANCH</p>
+                                    <p className="font-semibold text-sm">
+                                        {member.location ? `${member.location.name} ${member.location.code ? `(${member.location.code})` : ''}` : 'No Branch Assigned (General Academy)'}
+                                    </p>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="target_branch">New Destination Branch</Label>
+                                    <Select
+                                        value={targetLocationId}
+                                        onValueChange={setTargetLocationId}
+                                    >
+                                        <SelectTrigger id="target_branch">
+                                            <SelectValue placeholder="Select target branch" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {availableLocations.map((loc) => (
+                                                <SelectItem key={loc.id} value={loc.id} disabled={loc.id === member.location_id}>
+                                                    {loc.name} {loc.code ? `(${loc.code})` : ''} {loc.id === member.location_id ? '(Current)' : ''}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200 space-y-1">
+                                    <div className="flex items-center gap-1.5 font-medium">
+                                        <ShieldCheck className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                                        Historical Audit Integrity Guaranteed
+                                    </div>
+                                    <p className="text-[11px] leading-relaxed">
+                                        Past payment records and attendance check-ins will permanently remain credited to the previous branch. All subsequent transactions from this point forward will belong to the newly assigned branch.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsTransferOpen(false)} disabled={isTransferring}>
+                                    Cancel
+                                </Button>
+                                <Button onClick={handleTransferLocation} disabled={isTransferring || !targetLocationId || targetLocationId === member.location_id}>
+                                    {isTransferring ? 'Transferring...' : 'Confirm Transfer'}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
         </AppLayout>

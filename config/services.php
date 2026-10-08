@@ -37,7 +37,7 @@ return [
 
     'textlk' => [
         'api_key' => env('TEXTLK_API_KEY'),
-        'sender_id' => env('TEXTLK_SMS_SENDER_ID', 'NYCSC'),
+        'sender_id' => env('TEXTLK_SMS_SENDER_ID', 'GoCoach'),
     ],
 
     'payhere' => [

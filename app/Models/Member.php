@@ -10,6 +10,7 @@ use App\Traits\Loggable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
 
@@ -24,6 +25,7 @@ class Member extends Model
 
     protected $fillable = [
         'user_id',
+        'location_id',
         'member_number',
         'registration_reference',
         'full_name',
@@ -167,5 +169,10 @@ class Member extends Model
     public function prefersSms(): bool
     {
         return $this->preferred_contact_method === 'sms';
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
     }
 }

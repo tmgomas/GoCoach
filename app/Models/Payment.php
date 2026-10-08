@@ -19,7 +19,8 @@ class Payment extends Model
 
     protected $fillable = [
         'member_id',
-        'program_id', // Added
+        'program_id',
+        'location_id',
         'type',
         'amount',
         'month_year',
@@ -47,18 +48,40 @@ class Payment extends Model
         'payment_method' => PaymentMethod::class,
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Payment $payment): void {
+            if (empty($payment->location_id) && $payment->member_id) {
+                $member = $payment->member ?? Member::find($payment->member_id);
+                if ($member && $member->location_id) {
+                    $payment->location_id = $member->location_id;
+                } elseif ($payment->program_id) {
+                    $program = $payment->program ?? Program::find($payment->program_id);
+                    if ($program && $program->location_id) {
+                        $payment->location_id = $program->location_id;
+                    }
+                }
+            }
+        });
+    }
+
     // Relationships
-    public function member()
+    public function location(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Location::class);
+    }
+
+    public function member(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Member::class);
     }
 
-    public function program()
+    public function program(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Program::class);
     }
 
-    public function verifiedBy()
+    public function verifiedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class, 'verified_by');
     }

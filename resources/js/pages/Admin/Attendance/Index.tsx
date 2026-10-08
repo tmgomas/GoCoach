@@ -50,18 +50,30 @@ interface Attendance {
     check_out_time?: string;
 }
 
+interface LocationOption {
+    id: string;
+    name: string;
+    code?: string | null;
+}
+
 interface Member {
     id: string;
     member_number: string;
     full_name: string;
+    location?: {
+        name: string;
+        code?: string | null;
+    } | null;
     attendance: Attendance | null;
 }
 
 interface Props {
     programs: Program[];
+    locations?: LocationOption[];
     filters: {
         date?: string;
         program_id?: string;
+        location_id?: string;
     };
     members: {
         data: Member[];
@@ -94,9 +106,10 @@ const apiPost = async (url: string, data: any) => {
     return response.json();
 };
 
-export default function Index({ programs, filters, members, currentDate }: Props) {
+export default function Index({ programs, locations = [], filters, members, currentDate }: Props) {
     const [selectedDate, setSelectedDate] = useState(filters.date || currentDate);
     const [selectedProgramId, setSelectedProgramId] = useState(filters.program_id || '');
+    const [selectedLocationId, setSelectedLocationId] = useState(filters.location_id || 'all');
     const [searchTerm, setSearchTerm] = useState('');
     const [attendanceData, setAttendanceData] = useState<AttendanceState[]>([]);
     const [processing, setProcessing] = useState(false);
@@ -106,7 +119,7 @@ export default function Index({ programs, filters, members, currentDate }: Props
     const [isScanning, setIsScanning] = useState(false);
     const [lastScanned, setLastScanned] = useState<string | null>(null);
     const [activeScanTab, setActiveScanTab] = useState<'qr' | 'nfc' | 'rfid'>('qr');
-    const [scanResult, setScanResult] = useState<{ success: boolean; message: string; member?: any } | null>(null);
+    const [scanResult, setScanResult] = useState<{ success: boolean; message: string; member?: any; pendingPayments?: any[] } | null>(null);
 
     // Initialize state from props
     useEffect(() => {
@@ -125,8 +138,13 @@ export default function Index({ programs, filters, members, currentDate }: Props
     }, [members]);
 
     // Handle Filters Change
-    const applyFilters = (date: string, sportId: string) => {
-        router.get('/admin/attendance', { date, program_id: sportId }, { preserveState: true, preserveScroll: true });
+    const applyFilters = (date: string, sportId: string, locId?: string) => {
+        const loc = locId !== undefined ? locId : selectedLocationId;
+        const params: any = { date, program_id: sportId };
+        if (loc && loc !== 'all') {
+            params.location_id = loc;
+        }
+        router.get('/admin/attendance', params, { preserveState: true, preserveScroll: true });
     };
 
     const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,6 +158,13 @@ export default function Index({ programs, filters, members, currentDate }: Props
     const handleProgramChange = (sportId: string) => {
         setSelectedProgramId(sportId);
         applyFilters(selectedDate, sportId);
+    };
+
+    const handleLocationChange = (locId: string) => {
+        setSelectedLocationId(locId);
+        if (selectedProgramId) {
+            applyFilters(selectedDate, selectedProgramId, locId);
+        }
     };
 
     // Handle Attendance Changes using local state
@@ -206,7 +231,12 @@ export default function Index({ programs, filters, members, currentDate }: Props
             method: method === 'qr' ? 'qr_code' : method
         }).then(data => {
             if (data.success) {
-                setScanResult({ success: true, message: data.message, member: data.member });
+                setScanResult({ 
+                    success: true, 
+                    message: data.message, 
+                    member: data.member,
+                    pendingPayments: data.pending_payments || []
+                });
 
                 if (data.member) {
                     setAttendanceData(prev => prev.map(item => {
@@ -221,15 +251,21 @@ export default function Index({ programs, filters, members, currentDate }: Props
                     }));
                     router.reload({ only: ['members'] });
                 }
+
+                // Only auto-hide if there are no pending payments
+                if (!data.pending_payments || data.pending_payments.length === 0) {
+                    setTimeout(() => setScanResult(null), 3000);
+                }
             } else {
                 setScanResult({ success: false, message: data.message });
+                setTimeout(() => setScanResult(null), 3000);
             }
-            setTimeout(() => setScanResult(null), 3000);
             if (method === 'qr') setTimeout(() => setLastScanned(null), 4000);
         }).catch(err => {
             console.error(err);
             setScanResult({ success: false, message: "Scan failed or member not found." });
             setLastScanned(null);
+            setTimeout(() => setScanResult(null), 3000);
         });
     };
 
@@ -249,7 +285,7 @@ export default function Index({ programs, filters, members, currentDate }: Props
                 <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
                     <div className="flex flex-col gap-3">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-lg font-semibold text-gray-900">Attendance</h2>
+                            <h2 className="text-lg font-semibold text-foreground">Attendance</h2>
                             {selectedProgramId && (
                                 <div className="flex items-center gap-2">
                                     <div className="hidden sm:block text-sm text-muted-foreground mr-2">
@@ -272,19 +308,19 @@ export default function Index({ programs, filters, members, currentDate }: Props
                         </div>
 
                         {/* Controls Bar */}
-                        <div className="flex flex-col sm:flex-row gap-3 sm:items-center pt-2">
-                            <div className="flex flex-1 gap-3 items-center overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
-                                <div className="flex-shrink-0 w-36 sm:w-44">
+                        <div className="flex flex-col gap-3 pt-2">
+                            <div className="grid grid-cols-2 sm:flex sm:flex-row sm:items-center gap-3">
+                                <div className="col-span-2 sm:w-44">
                                     <Input
                                         type="date"
                                         value={selectedDate}
                                         onChange={handleDateChange}
-                                        className="h-9 text-sm bg-white/50 border-gray-200"
+                                        className="h-9 text-sm bg-background border-input w-full"
                                     />
                                 </div>
-                                <div className="flex-shrink-0 w-40 sm:w-56">
+                                <div className="col-span-1 sm:w-56">
                                     <Select value={selectedProgramId} onValueChange={handleProgramChange}>
-                                        <SelectTrigger className="h-9 bg-white/50 border-gray-200">
+                                        <SelectTrigger className="h-9 bg-background border-input">
                                             <SelectValue placeholder="Select Program" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -295,15 +331,31 @@ export default function Index({ programs, filters, members, currentDate }: Props
                                     </Select>
                                 </div>
 
-                                <span className="flex-1"></span>
+                                <div className="col-span-1 sm:w-48">
+                                    <Select value={selectedLocationId} onValueChange={handleLocationChange}>
+                                        <SelectTrigger className="h-9 bg-background border-input">
+                                            <SelectValue placeholder="All Branches" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Branches</SelectItem>
+                                            {locations.map(loc => (
+                                                <SelectItem key={loc.id} value={loc.id}>
+                                                    {loc.name} {loc.code ? `(${loc.code})` : ''}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <span className="hidden sm:block flex-1"></span>
 
                                 {selectedProgramId && (
-                                    <div className="relative w-full sm:w-64 hidden sm:block">
+                                    <div className="relative col-span-2 sm:w-64 hidden sm:block">
                                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             type="search"
                                             placeholder="Search members..."
-                                            className="pl-9 h-9 w-full bg-white/50 border-gray-200"
+                                            className="pl-9 h-9 w-full bg-background border-input"
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
                                         />
@@ -313,13 +365,12 @@ export default function Index({ programs, filters, members, currentDate }: Props
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="flex-shrink-0 gap-2 h-9 bg-white/80 hover:bg-white shadow-sm border-gray-200 text-gray-700"
+                                    className="col-span-2 sm:w-auto w-full gap-2 h-9 bg-background hover:bg-card shadow-sm border-input text-foreground"
                                     onClick={() => setIsScanning(true)}
                                     disabled={!selectedProgramId}
                                 >
                                     <ScanLine className="h-4 w-4 text-primary" />
-                                    <span className="hidden sm:inline">Quick Scan</span>
-                                    <span className="sm:hidden">Scan</span>
+                                    <span>Quick Scan</span>
                                 </Button>
                             </div>
 
@@ -330,7 +381,7 @@ export default function Index({ programs, filters, members, currentDate }: Props
                                     <Input
                                         type="search"
                                         placeholder="Search members..."
-                                        className="pl-9 h-9 w-full bg-white/50"
+                                        className="pl-9 h-9 w-full bg-background"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                     />
@@ -346,15 +397,15 @@ export default function Index({ programs, filters, members, currentDate }: Props
 
                 {/* Content Area */}
                 {!selectedProgramId ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground bg-white rounded-xl border border-dashed p-8">
-                        <div className="rounded-full bg-gray-100 p-4 mb-4">
+                    <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground bg-card rounded-xl border border-dashed p-8">
+                        <div className="rounded-full bg-muted p-4 mb-4">
                             <Filter className="h-8 w-8 opacity-50" />
                         </div>
-                        <h3 className="text-lg font-medium text-gray-900">No Program Selected</h3>
-                        <p className="mt-1 text-sm">Select a sport from the toolbar to load members.</p>
+                        <h3 className="text-lg font-medium text-foreground">No Program Selected</h3>
+                        <p className="mt-1 text-sm">Select a program from the toolbar to load members.</p>
                     </div>
                 ) : filteredMembers.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground bg-white rounded-xl border border-dashed p-8">
+                    <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground bg-card rounded-xl border border-dashed p-8">
                         <p>No members found.</p>
                     </div>
                 ) : (
@@ -375,11 +426,11 @@ export default function Index({ programs, filters, members, currentDate }: Props
                                     <div
                                         key={member.id}
                                         className={cn(
-                                            "group relative flex flex-col gap-3 rounded-xl border p-4 bg-white transition-all duration-200",
-                                            "hover:shadow-md hover:border-gray-300",
+                                            "group relative flex flex-col gap-3 rounded-xl border p-4 bg-card transition-all duration-200",
+                                            "hover:shadow-md hover:border-border",
                                             state.present
-                                                ? "border-green-200 bg-green-50/40 shadow-sm ring-1 ring-green-500/10"
-                                                : "border-gray-200 shadow-sm"
+                                                ? "border-green-200 dark:border-green-900/50 bg-green-50/40 dark:bg-green-900/10 shadow-sm ring-1 ring-green-500/10 dark:ring-green-500/20"
+                                                : "border-input shadow-sm"
                                         )}
                                     >
                                         <div className="flex items-start justify-between gap-3">
@@ -387,16 +438,23 @@ export default function Index({ programs, filters, members, currentDate }: Props
                                                 <div className={cn(
                                                     "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-colors shadow-sm",
                                                     state.present
-                                                        ? "bg-gradient-to-br from-green-100 to-green-200 text-green-700 ring-2 ring-white"
-                                                        : "bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 ring-2 ring-white"
+                                                        ? "bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/50 dark:to-green-800/50 text-green-700 dark:text-green-400 ring-2 ring-card"
+                                                        : "bg-muted text-muted-foreground ring-2 ring-card"
                                                 )}>
                                                     {(member.full_name || '?').charAt(0)}
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <h3 className="font-semibold text-gray-900 leading-tight truncate text-sm sm:text-base" title={member.full_name}>
+                                                    <h3 className="font-semibold text-foreground leading-tight truncate text-sm sm:text-base" title={member.full_name}>
                                                         {member.full_name || 'Unknown Member'}
                                                     </h3>
-                                                    <p className="text-xs text-muted-foreground truncate">{member.member_number}</p>
+                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                        <p className="text-xs text-muted-foreground truncate">{member.member_number}</p>
+                                                        {member.location && (
+                                                            <Badge variant="outline" className="text-[10px] py-0 px-1 font-normal bg-muted/40">
+                                                                {member.location.name}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -412,7 +470,7 @@ export default function Index({ programs, filters, members, currentDate }: Props
 
                                         {/* Expanded Time Controls */}
                                         {state.present && (
-                                            <div className="grid grid-cols-2 gap-3 mt-1 pt-3 border-t border-black/5 animate-in slide-in-from-top-2 fade-in duration-200">
+                                            <div className="grid grid-cols-2 gap-3 mt-1 pt-3 border-t border-border animate-in slide-in-from-top-2 fade-in duration-200">
                                                 <div className="space-y-1.5">
                                                     <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
                                                         <Clock className="h-3 w-3" /> Check In
@@ -421,7 +479,7 @@ export default function Index({ programs, filters, members, currentDate }: Props
                                                         type="time"
                                                         value={state.check_in}
                                                         onChange={(e) => updateCheckInTime(member.id, e.target.value)}
-                                                        className="h-8 text-xs font-medium bg-white/80 border-gray-200 focus:border-green-500 transition-colors"
+                                                        className="h-8 text-xs font-medium bg-background border-input focus:border-green-500 transition-colors"
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5">
@@ -432,7 +490,7 @@ export default function Index({ programs, filters, members, currentDate }: Props
                                                         type="time"
                                                         value={state.check_out}
                                                         onChange={(e) => updateCheckOutTime(member.id, e.target.value)}
-                                                        className="h-8 text-xs font-medium bg-white/80 border-gray-200 focus:border-green-500 transition-colors"
+                                                        className="h-8 text-xs font-medium bg-background border-input focus:border-green-500 transition-colors"
                                                     />
                                                 </div>
                                             </div>
@@ -458,7 +516,7 @@ export default function Index({ programs, filters, members, currentDate }: Props
                                                 size="sm"
                                                 className={cn(
                                                     "min-w-9 h-9",
-                                                    !link.active && "bg-white text-gray-700"
+                                                    !link.active && "bg-card text-foreground"
                                                 )}
                                                 onClick={() => {
                                                     // Parse URL and preserve state
@@ -480,7 +538,7 @@ export default function Index({ programs, filters, members, currentDate }: Props
                                                 variant="outline"
                                                 size="sm"
                                                 disabled
-                                                className="min-w-9 h-9 opacity-50 bg-white"
+                                                className="min-w-9 h-9 opacity-50 bg-card"
                                                 dangerouslySetInnerHTML={{ __html: label }}
                                             />
                                         );
@@ -544,15 +602,58 @@ export default function Index({ programs, filters, members, currentDate }: Props
 
                             {/* Scan Result Feedback */}
                             {scanResult && (
-                                <div className={cn(
-                                    "mt-4 p-4 rounded-xl flex items-center gap-3 animate-in slide-in-from-bottom-2 fade-in",
-                                    scanResult.success ? "bg-green-100 text-green-900" : "bg-red-100 text-red-900"
-                                )}>
-                                    {scanResult.success ? <CheckCircle className="h-6 w-6 text-green-700" /> : <XCircle className="h-6 w-6 text-red-700" />}
-                                    <div>
-                                        <h4 className="font-semibold text-sm">{scanResult.success ? 'Confirmed' : 'Error'}</h4>
-                                        <p className="text-xs opacity-90">{scanResult.message}</p>
+                                <div className="space-y-3 mt-4">
+                                    <div className={cn(
+                                        "p-4 rounded-xl flex items-center gap-3 animate-in slide-in-from-bottom-2 fade-in",
+                                        scanResult.success ? "bg-green-100 text-green-900 dark:bg-green-900/30 dark:text-green-300" : "bg-red-100 text-red-900 dark:bg-red-900/30 dark:text-red-300"
+                                    )}>
+                                        {scanResult.success ? <CheckCircle className="h-6 w-6 text-green-700 dark:text-green-400" /> : <XCircle className="h-6 w-6 text-red-700 dark:text-red-400" />}
+                                        <div>
+                                            <h4 className="font-semibold text-sm">{scanResult.success ? 'Confirmed' : 'Error'}</h4>
+                                            <p className="text-xs opacity-90">{scanResult.message}</p>
+                                        </div>
                                     </div>
+
+                                    {scanResult.pendingPayments && scanResult.pendingPayments.length > 0 && (
+                                        <div className="p-4 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/50 shadow-sm animate-in fade-in slide-in-from-bottom-4">
+                                            <div className="flex items-start gap-3">
+                                                <div className="mt-0.5"><CreditCard className="h-5 w-5 text-orange-500" /></div>
+                                                <div className="flex-1">
+                                                    <h4 className="font-bold text-orange-900 dark:text-orange-300 text-sm">Pending Payments</h4>
+                                                    <div className="mt-2 space-y-2">
+                                                        {scanResult.pendingPayments.map(payment => (
+                                                            <div key={payment.id} className="flex items-center justify-between bg-white/60 dark:bg-black/20 p-2 rounded border border-orange-100 dark:border-orange-900/30">
+                                                                <div>
+                                                                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-200">{payment.month_year}</p>
+                                                                    <p className="text-xs text-gray-600 dark:text-gray-400">Rs. {payment.amount}</p>
+                                                                </div>
+                                                                <Button 
+                                                                    size="sm" 
+                                                                    className="bg-orange-500 hover:bg-orange-600 text-white shadow-sm"
+                                                                    onClick={() => {
+                                                                        const url = payment.type === 'payment' ? `/admin/payments/${payment.id}/mark-as-paid` : '/admin/attendance/quick-pay';
+                                                                        const payload = payment.type === 'payment' ? { _method: 'PUT', payment_method: 'cash' } : { schedule_id: payment.id, payment_method: 'cash' };
+                                                                        
+                                                                        axios.post(url, payload)
+                                                                            .then(res => {
+                                                                                setScanResult(prev => {
+                                                                                    if(!prev) return prev;
+                                                                                    const updated = prev.pendingPayments?.filter(p => p.id !== payment.id);
+                                                                                    if(updated?.length === 0) setTimeout(() => setScanResult(null), 1500);
+                                                                                    return { ...prev, pendingPayments: updated, message: res.data?.message || 'Payment marked as paid' };
+                                                                                });
+                                                                            }).catch(err => alert('Payment failed'));
+                                                                    }}
+                                                                >
+                                                                    Pay Cash
+                                                                </Button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

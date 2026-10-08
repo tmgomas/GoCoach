@@ -34,8 +34,11 @@ interface Props {
 }
 
 export default function Create({ coaches, locations }: Props) {
+    const [isShortCodeManual, setIsShortCodeManual] = React.useState(false);
+
     const { data, setData, post, processing, errors } = useForm<{
         name: string;
+        short_code: string;
         description: string;
         admission_fee: string;
         monthly_fee: string;
@@ -47,6 +50,7 @@ export default function Create({ coaches, locations }: Props) {
         is_active: boolean;
     }>({
         name: '',
+        short_code: '',
         description: '',
         admission_fee: '',
         monthly_fee: '',
@@ -57,6 +61,15 @@ export default function Create({ coaches, locations }: Props) {
         schedule: {},
         is_active: true,
     });
+
+    const handleNameChange = (val: string) => {
+        const autoCode = !isShortCodeManual ? val.replace(/[^A-Za-z0-9]/g, '').substring(0, 2).toUpperCase() : data.short_code;
+        setData(prev => ({
+            ...prev,
+            name: val,
+            short_code: autoCode
+        }));
+    };
 
     const toggleDay = (day: string) => {
         const current = { ...data.schedule };
@@ -119,16 +132,34 @@ export default function Create({ coaches, locations }: Props) {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="grid gap-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">Program Name <span className="text-red-500">*</span></Label>
-                                    <Input
-                                        id="name"
-                                        value={data.name}
-                                        onChange={(e) => setData('name', e.target.value)}
-                                        placeholder="e.g. Swimming"
-                                        className={errors.name ? 'border-red-500' : ''}
-                                    />
-                                    {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="name">Program Name <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            id="name"
+                                            value={data.name}
+                                            onChange={(e) => handleNameChange(e.target.value)}
+                                            placeholder="e.g. Swimming"
+                                            className={errors.name ? 'border-red-500' : ''}
+                                        />
+                                        {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="short_code">Short Code</Label>
+                                        <Input
+                                            id="short_code"
+                                            value={data.short_code}
+                                            onChange={(e) => {
+                                                setIsShortCodeManual(true);
+                                                setData('short_code', e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+                                            }}
+                                            maxLength={5}
+                                            placeholder="e.g. SW (Auto-generated)"
+                                            className={errors.short_code ? 'border-red-500' : ''}
+                                        />
+                                        {errors.short_code && <p className="text-sm text-red-500">{errors.short_code}</p>}
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">

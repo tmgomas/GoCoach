@@ -41,6 +41,12 @@ export function PersonalInfoCard({ member }: PersonalInfoCardProps) {
                     <Label className="text-muted-foreground">Membership Type</Label>
                     <p className="capitalize font-medium">{member.membership_type}</p>
                 </div>
+                <div>
+                    <Label className="text-muted-foreground">Assigned Branch</Label>
+                    <p className="font-medium text-primary">
+                        {member.location ? `${member.location.name}${member.location.code ? ` (${member.location.code})` : ''}` : 'General / Unassigned'}
+                    </p>
+                </div>
                 <div className="sm:col-span-2">
                     <Label className="text-muted-foreground">Address</Label>
                     <p className="font-medium">{member.address}</p>

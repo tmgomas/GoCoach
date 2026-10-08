@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../config/themes/color_palette.dart';
 import '../../../../core/utils/validators.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/storage/secure_storage.dart';
+import '../../../../injection_container.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -20,6 +23,29 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  String _clubName = 'Loading...';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadClubData();
+  }
+
+  Future<void> _loadClubData() async {
+    final storage = sl<SecureStorageService>();
+    final clubName = await storage.getClubName();
+    
+    if (clubName == null || clubName.isEmpty) {
+      if (mounted) context.go('/club_selection');
+      return;
+    }
+    
+    if (mounted) {
+      setState(() {
+        _clubName = clubName;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -141,6 +167,34 @@ class _LoginPageState extends State<LoginPage> {
       padding: const EdgeInsets.only(top: 32, left: 28, right: 28, bottom: 24),
       child: Column(
         children: [
+          // Change Club Button
+          Align(
+            alignment: Alignment.topRight,
+            child: GestureDetector(
+              onTap: () {
+                final storage = sl<SecureStorageService>();
+                storage.clearClubData().then((_) {
+                  context.go('/club_selection');
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'Change Club',
+                  style: TextStyle(
+                    color: ColorPalette.primaryLight,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           // Emblem
           Container(
             width: 72,
@@ -165,7 +219,7 @@ class _LoginPageState extends State<LoginPage> {
               ],
             ),
             alignment: Alignment.center,
-            child: const Text('\u{1F3C5}', style: TextStyle(fontSize: 32)),
+            child: const Icon(Icons.sports, size: 36, color: Colors.white),
           ),
           const SizedBox(height: 16),
           // Wordmark
@@ -174,21 +228,21 @@ class _LoginPageState extends State<LoginPage> {
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
-                letterSpacing: 2.5,
+                letterSpacing: 1.5,
               ),
               children: [
-                TextSpan(text: 'NYC', style: TextStyle(color: ColorPalette.textPrimary)),
-                TextSpan(text: 'SC', style: TextStyle(color: ColorPalette.accent)),
+                TextSpan(text: 'Go', style: TextStyle(color: ColorPalette.textPrimary)),
+                TextSpan(text: 'Coach', style: TextStyle(color: ColorPalette.accent)),
               ],
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'NATIONAL YOUTH CORPS SPORTS COUNCIL',
-            style: TextStyle(
-              fontSize: 10,
+          Text(
+            _clubName.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 11,
               color: ColorPalette.textSecondary,
-              letterSpacing: 0.6,
+              letterSpacing: 0.8,
               fontWeight: FontWeight.w600,
               fontFamily: 'Inter',
             ),

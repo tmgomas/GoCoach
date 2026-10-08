@@ -2,13 +2,12 @@
 class ApiConstants {
   ApiConstants._();
 
-  // Base URL — change this to your production URL
-  static const String baseUrl = 'https://nycsc.tmgomis.online/api'; // Production Server
-  // static const String baseUrl = 'http://nycsc.test/api'; // Local dev (Herd/Laragon)
-  // static const String baseUrl = 'http://10.0.2.2:8000/api'; // Android emulator
-  // static const String baseUrl = 'http://localhost:8000/api'; // iOS simulator
+  // Base URL is now dynamically loaded per-tenant.
+  // This central URL is used only to fetch the list of available clubs.
+  static const String centralBaseUrl = 'https://gocoach.test/api'; // Change to production central domain when deploying
 
   // Auth
+
   static const String login = '/login';
   static const String logout = '/logout';
   static const String user = '/user';

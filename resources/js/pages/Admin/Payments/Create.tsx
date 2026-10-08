@@ -12,12 +12,14 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Loader2, Save, CreditCard } from 'lucide-react';
+import { ChevronLeft, Loader2, Save, CreditCard, Building2 } from 'lucide-react';
 
 interface Member {
     id: string;
     member_number: string;
     name: string;
+    location_id?: string | null;
+    location_name?: string | null;
 }
 
 interface Program {
@@ -140,6 +142,16 @@ export default function Create({ members, programs }: Props) {
                                             <p className="text-sm text-red-500">{errors.member_id}</p>
                                         )}
                                     </div>
+
+                                    {data.member_id && (() => {
+                                        const sel = members.find(m => m.id === data.member_id);
+                                        return (
+                                            <div className="flex items-center gap-2 p-2.5 rounded-md bg-muted/40 border text-xs text-muted-foreground">
+                                                <Building2 className="h-4 w-4 text-primary shrink-0" />
+                                                <span>Branch Affiliation: <strong className="text-foreground">{sel?.location_name || 'General Academy'}</strong> (This payment will automatically be credited to this branch)</span>
+                                            </div>
+                                        );
+                                    })()}
                                 </CardContent>
                             </Card>
 

@@ -20,9 +20,10 @@ class PaymentController extends Controller
 
     public function index(Request $request)
     {
-        $payments = Payment::with(['member.user', 'latestOnlineTransaction'])
+        $payments = Payment::with(['member.user', 'location', 'latestOnlineTransaction'])
             ->when($request->status, fn ($q, $status) => $q->where('status', $status))
             ->when($request->type, fn ($q, $type) => $q->where('type', $type))
+            ->when($request->location_id, fn ($q, $loc) => $q->where('location_id', $loc))
             ->when($request->search, function ($q, $search) {
                 $q->whereHas('member', function ($mq) use ($search) {
                     $mq->where('member_number', 'like', "%{$search}%")
@@ -32,34 +33,44 @@ class PaymentController extends Controller
             ->latest()
             ->paginate(15);
 
+        $locations = \App\Models\Location::where('is_active', true)
+            ->select('id', 'name', 'code')
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('Admin/Payments/Index', [
             'payments' => $payments,
-            'filters' => $request->only(['status', 'type', 'search']),
+            'locations' => $locations,
+            'filters' => $request->only(['status', 'type', 'search', 'location_id']),
         ]);
     }
 
     public function create()
     {
-        $members = Member::with('user')
+        $members = Member::with(['user', 'location'])
             ->whereHas('user')
             ->get()
             ->map(fn ($m) => [
                 'id' => $m->id,
                 'member_number' => $m->member_number,
                 'name' => $m->user->name ?? 'N/A',
+                'location_id' => $m->location_id,
+                'location_name' => $m->location?->name,
             ]);
 
-        $programs = Program::select('id', 'name', 'monthly_fee', 'admission_fee')->get();
+        $programs = Program::select('id', 'name', 'monthly_fee', 'admission_fee', 'location_id')->get();
+        $locations = \App\Models\Location::where('is_active', true)->select('id', 'name', 'code')->get();
 
         return Inertia::render('Admin/Payments/Create', [
             'members' => $members,
             'programs' => $programs,
+            'locations' => $locations,
         ]);
     }
 
     public function show(Payment $payment)
     {
-        $payment->load(['member.user', 'member.programs', 'latestOnlineTransaction', 'onlineTransactions']);
+        $payment->load(['member.user', 'member.programs', 'location', 'latestOnlineTransaction', 'onlineTransactions']);
 
         return Inertia::render('Admin/Payments/Show', [
             'payment' => $payment,
@@ -205,14 +216,14 @@ class PaymentController extends Controller
 
     public function receipt(Payment $payment)
     {
-        if (!in_array($payment->status->value, ['paid', 'verified'])) {
+        if (! in_array($payment->status->value, ['paid', 'verified'])) {
             abort(403, 'Receipt is only available for paid or verified payments.');
         }
 
         $payment->load(['member', 'items']);
-        
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('receipts.payment', compact('payment'));
-        
+
         if (request()->query('action') === 'print') {
             return $pdf->stream("receipt-{$payment->receipt_number}.pdf");
         }

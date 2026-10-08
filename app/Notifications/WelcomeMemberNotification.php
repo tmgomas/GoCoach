@@ -44,17 +44,18 @@ class WelcomeMemberNotification extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         $loginEmail = $notifiable->email ?? $this->member->email;
+        $appName = config('app.name', 'GoCoach');
 
         return (new MailMessage)
-            ->subject('Welcome to NYCSC!')
-            ->greeting("Welcome to NYCSC, {$this->member->calling_name}!")
+            ->subject("Welcome to {$appName}!")
+            ->greeting("Welcome to {$appName}, {$this->member->calling_name}!")
             ->line('Your membership registration has been received.')
             ->line('Your login credentials are:')
             ->line("**Login Email:** {$loginEmail}")
             ->line("**Temporary Password:** {$this->temporaryPassword}")
             ->action('Login Now', url('/login'))
             ->line('Please change your password after your first login.')
-            ->line('Thank you for joining the Naval and Maritime Academy Sports Club!');
+            ->line("Thank you for joining the {$appName} Sports Community!");
     }
 
     /**
@@ -74,7 +75,8 @@ class WelcomeMemberNotification extends Notification implements ShouldQueue
                 'password' => $this->temporaryPassword,
             ]);
         } else {
-            $message = "Welcome to NYCSC! Your login: {$loginEmail}. Password: {$this->temporaryPassword}. Change it after first login.";
+            $appName = config('app.name', 'GoCoach');
+            $message = "Welcome to {$appName}! Your login: {$loginEmail}. Password: {$this->temporaryPassword}. Change it after first login.";
         }
 
         return (new TextLKSMSMessage)

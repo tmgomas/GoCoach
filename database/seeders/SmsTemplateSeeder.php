@@ -16,12 +16,12 @@ class SmsTemplateSeeder extends Seeder
             [
                 'key' => 'member.welcome',
                 'description' => 'Registration received (Pending)',
-                'content' => 'Welcome to NYCSC! Your membership is pending approval. We will notify you once approved.',
+                'content' => 'Welcome to GoCoach! Your membership is pending approval. We will notify you once approved.',
             ],
             [
                 'key' => 'member.credentials',
                 'description' => 'New account credentials',
-                'content' => 'Welcome to NYCSC! Your login: {email} Password: {password} Please change it after first login.',
+                'content' => 'Welcome to GoCoach! Your login: {email} Password: {password} Please change it after first login.',
             ],
             [
                 'key' => 'member.approved',

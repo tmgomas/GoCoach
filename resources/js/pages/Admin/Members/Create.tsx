@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CheckCircle2, ChevronLeft, Loader2, Save } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, Loader2, Save, Building2 } from 'lucide-react';
 
 interface Program {
     id: string;
@@ -17,12 +17,22 @@ interface Program {
     monthly_fee: number;
 }
 
-interface Props {
-    programs: Program[];
+interface Location {
+    id: string;
+    name: string;
+    code?: string | null;
 }
 
-export default function Create({ programs }: Props) {
+interface Props {
+    programs: Program[];
+    locations?: Location[];
+}
+
+export default function Create({ programs, locations = [] }: Props) {
     const { data, setData, post, processing, errors } = useForm({
+        // Branch / Location
+        location_id: '',
+
         // Personal Information
         full_name: '',
         calling_name: '',
@@ -127,6 +137,41 @@ export default function Create({ programs }: Props) {
 
                     <form onSubmit={handleSubmit}>
                         <div className="grid gap-6">
+                            {/* Branch / Academy Location Assignment */}
+                            <Card className="border-primary/20 bg-primary/5">
+                                <CardHeader className="pb-3">
+                                    <div className="flex items-center gap-2">
+                                        <Building2 className="h-5 w-5 text-primary" />
+                                        <CardTitle className="text-lg">Branch / Academy Location</CardTitle>
+                                    </div>
+                                    <CardDescription>
+                                        Assign the student to their home branch. Future attendances and payments will automatically be tracked under this branch.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="max-w-md space-y-2">
+                                        <Label htmlFor="location_id">Select Branch</Label>
+                                        <Select
+                                            value={data.location_id || 'unassigned'}
+                                            onValueChange={(val) => setData('location_id', val === 'unassigned' ? '' : val)}
+                                        >
+                                            <SelectTrigger id="location_id" className="bg-background">
+                                                <SelectValue placeholder="Select primary branch" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="unassigned">No Branch (General Academy)</SelectItem>
+                                                {locations.map((loc) => (
+                                                    <SelectItem key={loc.id} value={loc.id}>
+                                                        {loc.name} {loc.code ? `(${loc.code})` : ''}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {errors.location_id && <p className="text-sm text-red-500">{errors.location_id}</p>}
+                                    </div>
+                                </CardContent>
+                            </Card>
+
                             {/* Personal Information */}
                             <Card>
                                 <CardHeader>

@@ -18,7 +18,12 @@ class LoginResponse implements LoginResponseContract, TwoFactorLoginResponseCont
     {
         $user = Auth::user();
 
-        if ($user->hasRole(['super_admin', 'admin'])) {
+        $hostname = $request->getHost();
+        if (in_array($hostname, config('tenancy.central_domains', []))) {
+            return redirect()->intended(route('central.tenants.index'));
+        }
+
+        if ($user->hasRole(['super_admin', 'admin', 'manager', 'cashier'])) {
             return redirect()->intended(route('admin.dashboard'));
         }
 

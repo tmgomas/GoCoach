@@ -77,7 +77,7 @@ trait HasAttendance
     /**
      * Get attendance for date range
      */
-    public function attendanceBetween(Carbon $startDate, Carbon $endDate)
+    public function attendanceBetween(\DateTimeInterface $startDate, \DateTimeInterface $endDate)
     {
         return $this->attendances()
             ->whereBetween('check_in_time', [$startDate, $endDate]);

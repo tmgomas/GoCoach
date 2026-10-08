@@ -32,7 +32,7 @@ class GenerateQRCodeAction
         $filename = "qr-codes/member-{$member->member_number}.png";
         Storage::disk('public')->put($filename, $qrCode);
 
-        return Storage::disk('public')->url($filename);
+        return tenant_asset($filename);
     }
 
     /**

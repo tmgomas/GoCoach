@@ -8,5 +8,10 @@ export type SharedData = {
     name: string;
     auth: Auth;
     sidebarOpen: boolean;
+    isCentral?: boolean;
+    tenant?: {
+        id: string;
+        name: string;
+    } | null;
     [key: string]: unknown;
 };
