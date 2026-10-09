@@ -20,6 +20,7 @@ return [
         'localhost',
         'gocoach.test',
         'nycsc.test',
+        'gocoach.tmgomis.online',
     ],
 
     /**
